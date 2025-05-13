@@ -16,10 +16,6 @@ obj_path = ""
 vao_drop_obj = []
 obj_count = float(0)
 
-vertex_positions_array = []
-vertex_normals_array = []
-vertex_face_normals_array = []
-vertex_indices_array = []
 
 isMouseDown = False
 orbitMd, panMd, zoomMd = False, False, False
@@ -33,6 +29,7 @@ layout (location = 1) in vec3 vin_color;
 out vec4 vout_color;
 
 uniform mat4 MVP;
+
 
 void main()
 {
@@ -195,19 +192,19 @@ def is_ear(vp_2D, i):
 
 def ear_clipping(vp, fi):
     vp_2D = projection2D(vp, fi)
-    print(vp_2D)
     indices = []        #삼각분할 한 후의 indices
     normals = []        #위 indices에 맞는 normal
     while len(vp_2D) > 3:       #다각형이 삼각형으로 쪼개질 떄 까지
         for i in range(len(vp_2D)):
             if is_ear(vp_2D, i):        
-                indices.append(fi[i][0])
-                normals.append(fi[i][1])
+                indices.extend((fi[(i-1) % len(vp_2D)][0], fi[i][0], fi[(i+1) % len(vp_2D)][0]))
+                normals.extend((fi[(i-1) % len(vp_2D)][1], fi[i][1], fi[(i+1) % len(vp_2D)][1]))
                 del fi[i]
                 del vp_2D[i]
                 break
-    indices.extend([fi[0][0], fi[1][0], fi[2][0]])
-    normals.extend([fi[0][1], fi[1][1], fi[2][1]])        #마지막 남은 삼각형을 저장
+    indices.extend((fi[0][0], fi[1][0], fi[2][0]))
+    normals.extend((fi[0][1], fi[1][1], fi[2][1]))        #마지막 남은 삼각형을 저장
+    print(indices)
     return indices, normals     #삼각분할한 인덱스들만을 반환(vertex position은 고정)
 
 def drop_list_callback(window, paths):
@@ -294,57 +291,6 @@ def drop_list_callback(window, paths):
             Number of faces with 4 vertices: {vertices_4_count}
             Number of faces with more than 4 vertices: {vertices_4more_count}
             """)
-    
-        
-
-def prepare_vao_rectangle():
-    v = [
-        (0.5, -0.5, 0.5),
-        (-0.5, -0.5, 0.5),
-        (-0.5, 0.5, 0.5),
-        (0.5, 0.5, 0.5),
-        (0.5, -0.5, -0.5),
-        (-0.5, -0.5, -0.5),
-        (-0.5, 0.5, -0.5),
-        (0.5, 0.5, -0.5)
-    ]
-    c = [.5, .5, .5]
-    # prepare vertex data (in main memory)
-    vertices = glm.array(glm.float32,
-        *v[0], *c, *v[2], *c, *v[1], *c, #triangle 1
-        *v[0], *c, *v[3], *c, *v[2], *c,
-        *v[0], *c, *v[4], *c, *v[3], *c,
-        *v[3], *c, *v[4], *c, *v[7], *c,
-        *v[3], *c, *v[7], *c, *v[6], *c,
-        *v[3], *c, *v[6], *c, *v[2], *c,
-        *v[2], *c, *v[6], *c, *v[5], *c,
-        *v[2], *c, *v[5], *c, *v[1], *c,
-        *v[1], *c, *v[5], *c, *v[0], *c,
-        *v[0], *c, *v[5], *c, *v[4], *c,
-        *v[5], *c, *v[6], *c, *v[7], *c,  
-        *v[5], *c, *v[7], *c, *v[4], *c   #triangle 12
-    )
-
-    # create and activate VAO (vertex array object)
-    VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
-    glBindVertexArray(VAO)      # activate VAO
-
-    # create and activate VBO (vertex buffer object)
-    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
-    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
-
-    # copy vertex data to VBO
-    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
-
-    # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
-    glEnableVertexAttribArray(0)
-
-    # configure vertex colors
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
-    glEnableVertexAttribArray(1)
-
-    return VAO
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -432,7 +378,6 @@ def main():
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
     
     # prepare vaos
-    vao_rectangle = prepare_vao_rectangle()
     vao_frame = prepare_vao_frame()
     
     #초기 카메라 세팅
@@ -508,11 +453,6 @@ def main():
             glBindVertexArray(vao_obj[0])
             glDrawElements(GL_TRIANGLES, vao_obj[1], GL_UNSIGNED_INT, None)
         
-
-        # draw triangle w.r.t. the current frame
-        #glBindVertexArray(vao_rectangle)
-        #glDrawArrays(GL_TRIANGLES, 0, 3*12)
-
         # draw current frame
         glBindVertexArray(vao_frame)
         glDrawArrays(GL_LINES, 0, 6)
