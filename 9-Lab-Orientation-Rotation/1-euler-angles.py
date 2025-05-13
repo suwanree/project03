@@ -6,6 +6,7 @@ import numpy as np
 
 g_cam_ang = 0.
 g_cam_height = .1
+a, b, c = 0, 0, 0
 
 g_vertex_shader_src_lighting = '''
 #version 330 core
@@ -160,7 +161,7 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
 
 
 def key_callback(window, key, scancode, action, mods):
-    global g_cam_ang, g_cam_height
+    global g_cam_ang, g_cam_height, a, b, c
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     else:
@@ -173,6 +174,20 @@ def key_callback(window, key, scancode, action, mods):
                 g_cam_height += .1
             elif key==GLFW_KEY_W:
                 g_cam_height += -.1
+            elif key==GLFW_KEY_A:
+                a += 10
+            elif key==GLFW_KEY_Z:
+                a -= 10
+            elif key==GLFW_KEY_S:
+                b += 10
+            elif key==GLFW_KEY_X:
+                b -= 10
+            elif key==GLFW_KEY_D:
+                c += 10
+            elif key==GLFW_KEY_C:
+                c -= 10
+            elif key==GLFW_KEY_V:
+                a, b, c = 0, 0, 0
 
 def prepare_vao_cube():
     # prepare vertex data (in main memory)
@@ -304,7 +319,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, '1-euler-angles', None, None)
+    window = glfwCreateWindow(800, 800, '2023085605 박수환', None, None)
     if not window:
         glfwTerminate()
         return
@@ -325,11 +340,9 @@ def main():
     unif_locs_color = {}
     for name in unif_names:
         unif_locs_color[name] = glGetUniformLocation(shader_color, name)
-
     # prepare vaos
     vao_cube = prepare_vao_cube()
     vao_frame = prepare_vao_frame()
-
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
         # enable depth test (we'll see details later)
@@ -348,14 +361,15 @@ def main():
         draw_frame(vao_frame, P*V, unif_locs_color)
 
         # ZYX Euler angles
-        t = glfwGetTime()
-        xang = t
-        yang = glm.radians(30)
-        zang = glm.radians(30)
-        Rx = glm.rotate(xang, (1,0,0))
-        Ry = glm.rotate(yang, (0,1,0))
-        Rz = glm.rotate(zang, (0,0,1))
-        M = glm.mat4(Rz * Ry * Rx)
+        #t = glfwGetTime()
+        
+        xang = glm.radians(a)
+        yang = glm.radians(b)
+        zang = glm.radians(c)
+        Rz1 = glm.rotate(xang, (0, 0, 1))
+        Ry = glm.rotate(yang, (1,0,0))
+        Rz2 = glm.rotate(zang, (0,0,1))
+        M = glm.mat4(Rz1 * Ry * Rz2)
 
         # set view_pos uniform in shader_lighting
         glUseProgram(shader_lighting)

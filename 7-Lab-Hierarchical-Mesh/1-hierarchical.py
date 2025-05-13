@@ -271,8 +271,8 @@ def main():
 
     # create a hirarchical model - Node(parent, shape_transform, color)
     base = Node(None, glm.scale((.2,.2,0.)), glm.vec3(0,0,1))
-    arm = Node(base, glm.translate((.5,0,.01)) * glm.scale((.5,.1,0.)), glm.vec3(1,0,0))
-
+    arm = Node(base, glm.scale((.25,.1,0.)), glm.vec3(1,0,0))
+    arm2 = Node(arm, glm.scale((.25,.1,0.)), glm.vec3(0,1,0))
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
         # enable depth test (we'll see details later)
@@ -294,7 +294,8 @@ def main():
 
         # set local transformations of each node
         base.set_transform(glm.translate((glm.sin(t),0,0)))
-        arm.set_transform(glm.translate((.2, 0, 0)) * glm.rotate(t, (0,0,1)))
+        arm.set_transform(glm.rotate(t, (0,0,1)) * glm.translate((.25, 0, .1)))
+        arm2.set_transform(glm.translate((.25, 0, .1))*glm.rotate(t, (0,0,1))*glm.translate((.25, 0, 0)))
 
         # recursively update global transformations of all nodes
         base.update_tree_global_transform()
@@ -303,6 +304,7 @@ def main():
         glUseProgram(shader_for_box)
         draw_node(vao_box, base, P*V, loc_MVP_box, loc_color_box)
         draw_node(vao_box, arm, P*V, loc_MVP_box, loc_color_box)
+        draw_node(vao_box, arm2, P*V, loc_MVP_box, loc_color_box)
 
 
         # swap front and back buffers

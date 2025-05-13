@@ -121,19 +121,23 @@ def main():
 
 
     # rotation 30 deg
+    t = glfwGetTime()
     th = np.radians(30)
     R = np.array([[np.cos(th), -np.sin(th), 0.],
                   [np.sin(th),  np.cos(th), 0.],
                   [0.,         0.,          1.]])
-
+    F = np.array([[-1, 0., 0],
+                 [0., 1, .0],
+                 [0., 0., 1.]])
     # tranlation by (.5, .2)
-    T = np.array([[1., 0., .5],
-                  [0., 1., .2],
+    T = np.array([[1., 0., .4],
+                  [0., 1., .1],
                   [0., 0., 1.]])
 
-    M = R
+    #M = R
     # M = T
-    # M = R @ T   # '@' is matrix-matrix / matrix-vector multiplication operator
+    M = T@F@R     # '@' is matrix-matrix / matrix-vector multiplication operator
+    #M = B @ T
     # M = T @ R
 
     # print(M)

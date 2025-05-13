@@ -111,7 +111,7 @@ def framebuffer_size_callback(window, width, height):
     ortho_height = 10.
     ortho_width = ortho_height * width/height
     g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
-
+    g_P = glm.perspective(45, width/height, 1, 10)
 def prepare_vao_cube():
     # prepare vertex data (in main memory)
     # 36 vertices for 12 triangles
@@ -278,7 +278,7 @@ def main():
     ortho_height = 10.
     ortho_width = ortho_height * 800/800    # initial width/height
     g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
-
+    g_P = glm.perspective(45, 1, 1, 10)
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
         # enable depth test (we'll see details later)
@@ -292,7 +292,7 @@ def main():
 
         # view matrix
         # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
-        V = glm.lookAt(glm.vec3(1*np.sin(g_cam_ang),g_cam_height,1*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))
+        V = glm.lookAt(glm.vec3(2*np.sin(g_cam_ang),g_cam_height,2*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))
 
         # draw world frame
         draw_frame(vao_frame, g_P*V*glm.mat4(), loc_MVP)

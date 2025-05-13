@@ -278,7 +278,7 @@ def main():
         # orthogonal projection - try changing arguments
         # P = glm.ortho(-1,1,-1,1,-1,1)
         P = glm.ortho(-5,5, -5,5, -10,10)
-
+        P = glm.perspective(45, 1, 1, 50)
         # view matrix
         # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
         V = glm.lookAt(glm.vec3(1*np.sin(g_cam_ang),g_cam_height,1*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))

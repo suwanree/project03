@@ -208,14 +208,17 @@ def main():
         # scaling
         S = glm.scale(glm.vec3(np.sin(t), np.sin(t), np.sin(t)))
 
-        M = R
+        M = glm.mat4(1,2,0,0,
+                     0,1,0,0,
+                     0,0,1,0,
+                     0,0,0,1)
         # M = T
         # M = S
         # M = R @ T
         # M = T @ R
 
         # current frame: M
-        glUniformMatrix4fv(loc_M, 1, GL_FALSE, glm.value_ptr(M))
+        glUniformMatrix4fv(loc_M, 1, GL_TRUE, glm.value_ptr(M))
 
         # draw triangle w.r.t. the current frame
         glBindVertexArray(vao_triangle)

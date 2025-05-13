@@ -210,8 +210,9 @@ def main():
         # view matrix
         # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
         V = glm.lookAt(glm.vec3(.1*np.sin(g_cam_ang),g_cam_height,.1*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))
-
-        # current frame: P*V*I (now this is the world frame)
+        V = glm.lookAt(glm.vec3(0, 0, 0), glm.vec3(0, 0, -1), glm.vec3(0, 1, 0))
+        # current frame: P*V*I (now this is the world frame)    
+        #V = glm.mat4()
         I = glm.mat4()
         MVP = P*V*I
         glUniformMatrix4fv(loc_MVP, 1, GL_FALSE, glm.value_ptr(MVP))

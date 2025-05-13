@@ -197,8 +197,8 @@ def main():
 
         # draw current frame
         glBindVertexArray(vao_frame)
-        glDrawArrays(GL_LINES, 0, 6)
-
+        glDrawArrays(GL_LINES, 0, 6) 
+        ###############VAO for frame
 
         # animating
         t = glfwGetTime()
