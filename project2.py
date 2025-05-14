@@ -24,12 +24,14 @@ g_vertex_shader_src = '''
 #version 330 core
 
 layout (location = 0) in vec3 vin_pos; 
-layout (location = 1) in vec3 vin_color; 
+layout (location = 1) in vec3 vin_normal; 
 
-out vec4 vout_color;
+out vec3 vout_surface_pos;
+out vec3 vout_normal;
+
 
 uniform mat4 MVP;
-
+uniform mat4 M;
 
 void main()
 {
@@ -38,20 +40,58 @@ void main()
 
     gl_Position = MVP * p3D_in_hcoord;
 
-    vout_color = vec4(vin_color, 1.);
+    vout_surface_pos = vec3(M * vec4(vin_pos, 1));
+    vout_normal = normalize( mat3(inverse(transpose(M)) ) * vin_normal);
+
 }
 '''
+
 
 g_fragment_shader_src = '''
 #version 330 core
 
-in vec4 vout_color;
+in vec3 vout_surface_pos;
+in vec3 vout_normal; 
 
 out vec4 FragColor;
 
+uniform vec3 view_pos;
+
 void main()
 {
-    FragColor = vout_color;
+    vec3 light_pos = vec3(10, 50, 10);
+    vec3 light_color = vec3(1,1,1);
+    vec3 material_color = vec3(1,1,1);
+    float material_shininess = 32.0;
+
+    vec3 light_ambient = 0.1*light_color;
+    vec3 light_diffuse = light_color;
+    vec3 light_specular = light_color;
+
+    vec3 material_ambient = material_color;
+    vec3 material_diffuse = material_color;
+    vec3 material_specular = vec3(1,1,1);
+
+    // ambient
+    vec3 ambient = light_ambient * material_ambient;
+
+    // for diffiuse and specular
+    vec3 normal = normalize(vout_normal);
+    vec3 surface_pos = vout_surface_pos;
+    vec3 light_dir = normalize(light_pos - surface_pos);
+
+    // diffuse
+    float diff = max(dot(normal, light_dir), 0);
+    vec3 diffuse = diff * light_diffuse * material_diffuse;
+
+    // specular
+    vec3 view_dir = normalize(view_pos - surface_pos);
+    vec3 reflect_dir = reflect(-light_dir, normal);
+    float spec = pow( max(dot(view_dir, reflect_dir), 0.0), material_shininess);
+    vec3 specular = spec * light_specular * material_specular;
+
+    vec3 color = ambient + diffuse + specular;
+    FragColor = vec4(color, 1.);
 }
 '''
 
@@ -149,7 +189,6 @@ def projection2D(vp, fi):
 
     n = glm.cross(p1 - base, p2 - base)
 
-    # u: 기준 축 벡터 (p1 - base) 정규화
     u_raw = p1 - base
     if glm.length(u_raw) == 0:
         u = glm.vec3(1.0, 0.0, 0.0)
@@ -192,20 +231,20 @@ def is_ear(vp_2D, i):
 
 def ear_clipping(vp, fi):
     vp_2D = projection2D(vp, fi)
-    indices = []        #삼각분할 한 후의 indices
-    normals = []        #위 indices에 맞는 normal
+    ret_indices_normals = []
     while len(vp_2D) > 3:       #다각형이 삼각형으로 쪼개질 떄 까지
         for i in range(len(vp_2D)):
-            if is_ear(vp_2D, i):        
-                indices.extend((fi[(i-1) % len(vp_2D)][0], fi[i][0], fi[(i+1) % len(vp_2D)][0]))
-                normals.extend((fi[(i-1) % len(vp_2D)][1], fi[i][1], fi[(i+1) % len(vp_2D)][1]))
+            if is_ear(vp_2D, i):  
+                ret_indices_normals.extend([(fi[(i-1) % len(vp_2D)][0], fi[(i-1) % len(vp_2D)][1]),
+                                           (fi[i][0], fi[i][1]),
+                                           (fi[(i+1) % len(vp_2D)][0], fi[(i+1) % len(vp_2D)][1])]) 
                 del fi[i]
                 del vp_2D[i]
                 break
-    indices.extend((fi[0][0], fi[1][0], fi[2][0]))
-    normals.extend((fi[0][1], fi[1][1], fi[2][1]))        #마지막 남은 삼각형을 저장
-    print(indices)
-    return indices, normals     #삼각분할한 인덱스들만을 반환(vertex position은 고정)
+    ret_indices_normals.extend([(fi[0][0], fi[0][1]),
+                               (fi[1][0], fi[1][1]),
+                               (fi[2][0], fi[2][1])])
+    return ret_indices_normals
 
 def drop_list_callback(window, paths):
     global obj_path, vao_drop_obj
@@ -217,8 +256,8 @@ def drop_list_callback(window, paths):
 
         vertex_positions = []
         vertex_normals = []
-        vertex_indices = []
-        vertex_face_normals = []
+
+        vertex_indices_normals = []
 
         vertices_3_count = 0
         vertices_4_count = 0
@@ -229,7 +268,7 @@ def drop_list_callback(window, paths):
             ear_clipping_enable = False
             line_split = line.split()[1:]
             if line.startswith("vn"):
-                vertex_normals.extend([float(x) for x in line_split])           
+                vertex_normals.append([float(x) for x in line_split])           
             elif line.startswith("v "):
                 vertex_positions.append([float(x) + obj_count*2 if i == 0 else float(x) for i, x in enumerate(line_split)])
             elif line.startswith("f"):
@@ -253,38 +292,58 @@ def drop_list_callback(window, paths):
                 
 
                 if ear_clipping_enable:
-                    polygon_vertex_indices, polygon_face_infomations = ear_clipping(np.array(vertex_positions), polygon_infomation)
-                    vertex_indices.extend(polygon_vertex_indices)
-                    vertex_face_normals.extend(polygon_face_infomations)
+                    vertex_indices_normals.append(ear_clipping(np.array(vertex_positions), polygon_infomation))
                     #print(vertex_indices)
                 else:
-                    vertex_indices.extend([v for v, _ in polygon_infomation])
-                    vertex_face_normals.extend([n for _, n in polygon_infomation])
+                    vertex_indices_normals.append(polygon_infomation)
 
 
-        
-        #positions는 전처리를 위해 2차원 배열로 저장되어 있었음
-        flat = [coord for vertex in vertex_positions for coord in vertex]
-        vertex_positions = glm.array(glm.float32, *flat) 
-        vertex_normals = glm.array(glm.float32, *vertex_normals)
-        vertex_indices = glm.array(glm.uint32, *vertex_indices)
-        vertex_face_normals = glm.array(glm.int32, *vertex_face_normals)
+        unique_vertex_map = {}  # (v_idx, n_idx) -> new index
+        interleaved = []
+        ebo = []
+        next_index = 0
 
+        for face in vertex_indices_normals:
+            for v_idx, n_idx in face:
+                key = (v_idx, n_idx)
+                if key not in unique_vertex_map:
+                    unique_vertex_map[key] = next_index
+                    next_index += 1
+
+                    pos = vertex_positions[v_idx]  # obj is 1-based
+                    norm = vertex_normals[n_idx]
+
+                    interleaved.extend(pos)
+                    interleaved.extend(norm)
+
+                ebo.append(unique_vertex_map[key])
+
+        interleaved = glm.array(glm.float32, *interleaved)
+        ebo = glm.array(glm.uint32, *ebo)
+
+        print(interleaved)
+        print(ebo)
         VAO = glGenVertexArrays(1)
         glBindVertexArray(VAO)
 
         VBO = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, VBO)
-        glBufferData(GL_ARRAY_BUFFER, vertex_positions.nbytes, vertex_positions.ptr, GL_STATIC_DRAW) 
+        glBufferData(GL_ARRAY_BUFFER, interleaved.nbytes, interleaved.ptr, GL_STATIC_DRAW) 
 
         EBO = glGenBuffers(1)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertex_indices.nbytes, vertex_indices.ptr, GL_STATIC_DRAW)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, ebo.nbytes, ebo.ptr, GL_STATIC_DRAW)
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
+
+        #position
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
         glEnableVertexAttribArray(0)
+
+        #normals
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+        glEnableVertexAttribArray(1)
         obj_count += 1
-        vao_drop_obj.append([VAO, len(vertex_indices), file_name, face_count, vertices_3_count, vertices_4_count, vertices_4more_count])
+        vao_drop_obj.append([VAO, len(ebo), file_name, face_count, vertices_3_count, vertices_4_count, vertices_4more_count])
         print(f"""            Obj file name                  : {file_name}
             Total number of faces          : {face_count}
             Number of faces with 3 vertices: {vertices_3_count}
@@ -295,12 +354,12 @@ def drop_list_callback(window, paths):
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
     vertices = [
-        0.0, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis start
-         50.0, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis end 
+        0.0, 0.0, 0.0,  0.0, 1.0, 0.0, # x-axis start
+         50.0, 0.0, 0.0,  0.0, 1.0, 0.0, # x-axis end 
          0.0, 0.0, 0.0,  0.0, 1.0, 0.0, # y-axis start
          0.0, 50.0, 0.0,  0.0, 1.0, 0.0, # y-axis end 
-         0.0, 0.0, 0.0,  0.0, 0.0, 1.0, # z-axis start
-         0.0, 0.0, 50.0,  0.0, 0.0, 1.0] # z-axis end
+         0.0, 0.0, 0.0,  0.0, 1.0, 0.0, # z-axis start
+         0.0, 0.0, 50.0,  0.0, 1.0, 0.0] # z-axis end
     
     x = -100.0
     z = 100.0
@@ -332,7 +391,7 @@ def prepare_vao_frame():
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
     glEnableVertexAttribArray(0)
 
-    # configure vertex colors
+    # configure vertex normals
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
     glEnableVertexAttribArray(1)
 
@@ -376,6 +435,8 @@ def main():
 
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
+    M_loc = glGetUniformLocation(shader_program, 'M')
+    view_pos_loc = glGetUniformLocation(shader_program, 'view_pos')
     
     # prepare vaos
     vao_frame = prepare_vao_frame()
@@ -442,9 +503,13 @@ def main():
         zoom = 0  # 줌 입력 초기화
         #zoom
         V = glm.lookAt(eye.xyz, point.xyz, up.xyz)
+
         # current frame: P*V*I (now this is the world frame)
         MVP = P*V*M
+        glUniformMatrix4fv(M_loc, 1, GL_FALSE, glm.value_ptr(M))
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
+        glUniform3f(view_pos_loc, eye.x, eye.y, eye.z)
+
         # draw current frame
         glBindVertexArray(vao_frame)
         glDrawArrays(GL_LINES, 0, 1000)
