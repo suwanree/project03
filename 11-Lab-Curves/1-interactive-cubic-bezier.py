@@ -9,9 +9,7 @@ WINDOW_HEIGHT = 800
 g_control_points = [
     glm.vec3(250, 350, 0),
     glm.vec3(350, 450, 0),
-    glm.vec3(450, 450, 0),
-    glm.vec3(550, 350, 0),
-    ]
+    glm.vec3(450, 450, 0)]
 g_moving_index = None
 
 g_vao_control_points = None
@@ -173,13 +171,12 @@ def generate_curve_points(control_points):
     curve_points = []
 
     for t in np.linspace(0, 1, 101): # linspace(start, stop, num)
-        T = np.array([t**3, t**2, t, 1])
+        T = np.array([t**2, t, 1])
 
         # cubic Bezier basis matrix
-        M = np.array([[-1, 3, -3, 1],
-                      [3, -6, 3, 0],
-                      [-3, 3, 0, 0],
-                      [1, 0, 0, 0]], float)
+        M = np.array([[1, -2, 1],
+                      [-2, 2, 0],
+                      [1, 0, 0]], float)
 
         P = np.array(control_points)
         p = T @ M @ P
@@ -201,7 +198,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, '1-interactive-bezier', None, None)
+    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, '2023085605 박수환', None, None)
     if not window:
         glfwTerminate()
         return

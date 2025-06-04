@@ -248,7 +248,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, '1-hierarchical', None, None)
+    window = glfwCreateWindow(800, 800, '2023085605 박수환', None, None)
     if not window:
         glfwTerminate()
         return
@@ -272,7 +272,10 @@ def main():
 
     # create a hirarchical model - Node(parent, link_transform_from_parent, shape_transform, color)
     base = Node(None, glm.mat4(), glm.scale((.2,.2,0.)), glm.vec3(0,0,1))
-    arm = Node(base, glm.translate(glm.vec3(.2,0,0)), glm.translate((.5,0,.01)) * glm.scale((.5,.1,0.)), glm.vec3(1,0,0))
+    arm1 = Node(base, glm.translate(glm.vec3(.2,0,0)), glm.translate((.25,0,.01)) * glm.scale((.25,.1,0.)), glm.vec3(1,0,0))
+    arm2 = Node(arm1, glm.translate(glm.vec3(.5,0,.01)), glm.translate((.25,0,.01)) * glm.scale((.25,.1,0.)), glm.vec3(0,1,0))
+    arm3 = Node(base, glm.translate(glm.vec3(-.2,0,0)), glm.translate((-.25,0,.01)) * glm.scale((.25,.1,0.)), glm.vec3(1,0,0))
+    arm4 = Node(arm3, glm.translate(glm.vec3(-.5,0,.01)), glm.translate((-.25,0,.01)) * glm.scale((.25,.1,0.)), glm.vec3(0,1,0))
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
@@ -295,15 +298,20 @@ def main():
 
         # set local transformations of each node
         base.set_joint_transform(glm.translate((glm.sin(t),0,0)))
-        arm.set_joint_transform(glm.rotate(t, (0,0,1)))
-
+        arm1.set_joint_transform(glm.rotate(t, (0,0,1)))
+        arm2.set_joint_transform(glm.rotate(t, (0,0,1)))
+        arm3.set_joint_transform(glm.rotate(t, (0,0,-1)))
+        arm4.set_joint_transform(glm.rotate(t, (0,0,-1)))
         # recursively update global transformations of all nodes
         base.update_tree_global_transform()
 
         # draw nodes
         glUseProgram(shader_for_box)
         draw_node(vao_box, base, P*V, loc_MVP_box, loc_color_box)
-        draw_node(vao_box, arm, P*V, loc_MVP_box, loc_color_box)
+        draw_node(vao_box, arm1, P*V, loc_MVP_box, loc_color_box)
+        draw_node(vao_box, arm2, P*V, loc_MVP_box, loc_color_box)
+        draw_node(vao_box, arm3, P*V, loc_MVP_box, loc_color_box)
+        draw_node(vao_box, arm4, P*V, loc_MVP_box, loc_color_box)
 
 
         # swap front and back buffers
